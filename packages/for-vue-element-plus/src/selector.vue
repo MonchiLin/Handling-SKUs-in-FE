@@ -217,8 +217,8 @@ export default defineComponent({
     const handleOrder = () => {
       const stock = skuService.findStock(selectedItemModels.value, skuService.currentItemStocks)
       if (stock) {
-        skuService.updateStock(stock, {quantity: stock.quantity - 1})
         message.success("购买成功，请注意库存变化")
+        skuService.updateStock(stock, {quantity: stock.quantity - 1})
         initialize()
       }
     }

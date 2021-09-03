@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "bootstrap": "yarn && lerna bootstrap",
-    "run:for-vue-antd": "lerna run dev --scope @sku/for-vue-antd --stream --no-prefix"
+    "run:for-vue-antd": "lerna run dev --scope @sku/for-vue-antd --stream --no-prefix",
+    "run:for-vue-element-plus": "lerna run dev --scope @sku/for-vue-element-plus --stream --no-prefix"
   },
   "workspaces": ["packages/*"],
   "devDependencies": {

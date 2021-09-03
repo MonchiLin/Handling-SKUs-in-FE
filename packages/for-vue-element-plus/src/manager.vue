@@ -1,10 +1,10 @@
 <template>
   <a-card title="SKU 管理" :bordered="false">
     <a-row>
-      <a-button type="primary" @click="handleExportData">获取当前数据</a-button>
-    </a-row>
-    <a-row>
-      <a-button v-for="(_, index) of samples" :key="index" style="margin-right: 10px;" @click="loadSample(index)">加载示例数据{{ index }}</a-button>
+      <a-button @click="handleExportData">获取当前数据</a-button>
+      <a-button style="margin-left: 10px;" @click="loadSample('loadSample1')">加载示例数据1</a-button>
+      <a-button style="margin-left: 10px;" @click="loadSample('loadSample2')">加载实例数据2</a-button>
+      <a-button style="margin-left: 10px;" @click="loadSample('loadSample3')">加载实例数据3</a-button>
     </a-row>
 
     <a-form :model="item" style="margin-top: 10px;">
@@ -41,7 +41,6 @@ import SkuTable from "./components/sku-table.vue";
 import ItemModelManager from "./components/item-model-manager.vue";
 import { SKUTypeDefinition } from "@sku/core/src/sku-type-definition";
 import _ from 'lodash';
-import { message } from "ant-design-vue";
 
 /**
  * Model: 所有定义的型号，4G，红色，黄色，mini，SE 都是型号
@@ -75,19 +74,15 @@ export default defineComponent({
       skuService.db.models = skuService.db.models.filter(i => !(i.modelId === model.modelId && i.itemId === item.value.itemId && model.modelKind === i.modelKind))
     }
 
-    const loadSample = (sampleIndex: number) => {
-      skuService.loadSample(sampleIndex)
+    const loadSample = (method: 'loadSample1' | 'loadSample2' | "loadSample3") => {
+      skuService[method]()
     }
 
     const handleExportData = () => {
-      message.success("已输出至控制台，按 F12 查看，复制后可以直接给 SKUService 的 db 属性赋值")
-      console.group("当前数据")
       console.log(JSON.stringify(_.cloneDeep(skuService.db)))
-      console.groupEnd()
     }
 
     return {
-      samples: skuService.samples,
       item,
       items,
       handleChange,

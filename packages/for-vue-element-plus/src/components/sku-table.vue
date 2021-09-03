@@ -33,7 +33,7 @@ export default defineComponent({
     const skuService = useSKUService();
 
     const dataSource = computed(() => {
-      const itemStocks = skuService.currentItemStocksWithItemModelAsc
+      const itemStocks = skuService.currentItemStocksWithModelKindUsedCountAsc
       const itemBundles = skuService.currentItemBundles
       const itemModels = skuService.currentItemModels
       if (_.isEmpty(itemModels)) {
@@ -62,24 +62,24 @@ export default defineComponent({
 
       // console.clear()
       // console.log("skuRowSpanCalc", skuRowSpanCalc)
-      // console.log("实际行合并结果", skuRowSpanCalcMapper)
-      // console.log("kindUsedSortedCountAsc", kindUsedSortedCountAsc)
+      console.log("实际行合并结果", skuRowSpanCalcMapper)
+      console.log("kindUsedSortedCountAsc", kindUsedSortedCountAsc)
       // console.log("skuService.cartesianProd", _.cloneDeep(skuService.cartesianProd))
 
       const dataSource = itemStocks.flatMap((stock, rowIndex) => {
         const bundles = itemBundles.filter(bundle => bundle.bundle === stock.bundle)
         // console.log(_.cloneDeep(bundles))
-        // console.group(stock.bundle)
+        console.group(stock.bundle)
         const cols = bundles.reduce((prev, bundle) => {
           const model = itemModels.find(i => i.modelId === bundle.modelId)!
-          // console.log("model.name", model.name)
+          console.log("model.name", model.name)
           return {
             ...prev,
             [model.modelKind]: model.name,
             [`${model.modelKind}Model`]: model,
           }
         }, {})
-        // console.groupEnd()
+        console.groupEnd()
 
         // console.log(_.cloneDeep(cols))
 
