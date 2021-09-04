@@ -1,5 +1,6 @@
 <template>
   <manager/>
+  <a-divider>我是分割线</a-divider>
   <selector/>
 </template>
 

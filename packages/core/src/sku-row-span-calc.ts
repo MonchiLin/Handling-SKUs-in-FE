@@ -199,8 +199,7 @@ export class SkuRowSpanCalc {
     }
   }
 
-  static of(itemModels: SKUTypeDefinition.ItemModel[], referenceOrder: string[]): SkuRowSpanCalc {
-    itemModels = _.sortBy((itemModel) => referenceOrder.indexOf(itemModel.modelKind), itemModels)
+  static of(itemModels: SKUTypeDefinition.ItemModel[]): SkuRowSpanCalc {
     const o = new this()
     itemModels.forEach(itemModel => {
       o.push(itemModel.modelKind)

@@ -1,6 +1,6 @@
 <template>
   <a-collapse v-model:activeKey="modelActiveKey">
-    <a-collapse-panel v-for="kind of itemModelKinds" :key="kind" :header="getHeader(kind)">
+    <a-collapse-panel v-for="kind of modelKinds" :key="kind" :header="getHeader(kind)">
       <div style="display: flex; flex-direction: row;flex-wrap: wrap;">
         <item-model-creator @create="handleModelKindCreate(kind, $event)"/>
         <a-card v-for="model of getModelKindOf(kind)" :title="model.name" style="width: 300px">
@@ -19,7 +19,7 @@ import { computed, defineComponent, ref } from 'vue'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue';
 import ItemModelCreator from "./item-model-creator.vue";
 import { useSKUService } from "../sku-service-vue";
-import { ItemModelKind, itemModelKinds, ItemModelKindZHMapper } from "@sku/core/src/sku-service";
+import { ModelKind } from "@sku/core/src/sku-service";
 import { SKUTypeDefinition } from "@sku/core/src/sku-type-definition";
 
 export default defineComponent({
@@ -31,7 +31,7 @@ export default defineComponent({
     const itemModels = computed(() => {
       return skuService.db.models.filter(model => model.itemId === item.value.itemId)
     })
-    const modelActiveKey = ref(itemModelKinds)
+    const modelActiveKey = ref(ModelKind.Kinds)
 
     const handleModelRemove = (model: SKUTypeDefinition.ItemModel) => {
       skuService.modelDelete(model)
@@ -49,8 +49,8 @@ export default defineComponent({
       return itemModels.value.filter(model => model.modelKind === kind)
     }
 
-    const getHeader = (kind: ItemModelKind) => {
-      return ItemModelKindZHMapper[kind] + '(' + getModelKindOf(kind).length + ')'
+    const getHeader = (kind) => {
+      return ModelKind.NameMapper.get(kind) + '(' + getModelKindOf(kind).length + ')'
     }
 
     return {
@@ -59,8 +59,7 @@ export default defineComponent({
       modelActiveKey,
       handleModelRemove,
       handleModelKindCreate,
-      ItemModelKindZHMapper,
-      itemModelKinds,
+      modelKinds: ModelKind.Kinds,
       getHeader
     }
   }

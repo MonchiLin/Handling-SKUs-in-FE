@@ -2,6 +2,7 @@
   <a-card title="SKU 管理" :bordered="false">
     <a-row>
       <a-button type="primary" @click="handleExportData">获取当前数据</a-button>
+      <a-button type="primary" @click="handleClear">清空当前数据</a-button>
     </a-row>
     <a-row>
       <a-button v-for="(_, index) of samples" :key="index" style="margin-right: 10px;" @click="loadSample(index)">加载示例数据{{ index }}</a-button>
@@ -82,8 +83,12 @@ export default defineComponent({
     const handleExportData = () => {
       message.success("已输出至控制台，按 F12 查看，复制后可以直接给 SKUService 的 db 属性赋值")
       console.group("当前数据")
-      console.log(JSON.stringify(_.cloneDeep(skuService.db)))
+      console.log(_.cloneDeep(skuService.db))
       console.groupEnd()
+    }
+
+    const handleClear = () => {
+      skuService.initialize()
     }
 
     return {
@@ -93,7 +98,8 @@ export default defineComponent({
       handleChange,
       handleModelRemove,
       loadSample,
-      handleExportData
+      handleExportData,
+      handleClear,
     }
   }
 })

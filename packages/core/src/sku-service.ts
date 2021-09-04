@@ -2,65 +2,33 @@ import _ from "lodash/fp";
 import { SkuMemoryDb } from "./sku-memory-db";
 import { SKUTypeDefinition } from "./sku-type-definition";
 import { cartesian, itemStockEq, replaceAt } from "./_fn";
+import { SkuGraph } from "./sku-graph";
+import { SkuAdjoinMatrix } from "./sku-matrix";
 
-// 预定义的 itemModelKind
-export enum ItemModelKind {
-  color = "color",
-  edition = "edition",
-  size = "size",
-}
-
-export const itemModelKinds = [
-  ItemModelKind.color,
-  ItemModelKind.edition,
-  ItemModelKind.size,
-] as const
-
-
-export enum ItemModelKindZHMapper {
-  color = "颜色",
-  edition = "版本",
-  size = "尺寸",
-}
-
-
-/**
- * Model: 4G，红色，黄色，mini，SE 都是型号
- *
- * Stock:  通过 bundle 来关联型号，表示 SKU 的数量(quantity)，单价(unitPrice)，总销量(totalSales),月销量(monthSales)
- *
- * Bundle: 通过 bundle 字段来标识一组数据，如下列数据结构，通过 1,2,3,4 四个型号(model)来构成一个 sku
- * [
- *  { bundle: 1, model: 1 }.
- *  { bundle: 1, model: 2 }.
- *  { bundle: 1, model: 3 }.
- *  { bundle: 1, model: 4 }
- * ]
- *
- *
- */
-
-class Tree {
-  nodes: TreeNode[] = []
-
-  static of(currentItemStocks: { unitPrice: number; itemId: number; item: SKUTypeDefinition.Item | undefined; itemModels: SKUTypeDefinition.ItemModel[]; quantity: number; bundles: { itemId: number; modelId: number; model: { itemId: number; item: SKUTypeDefinition.Item | undefined; modelId: number; name: string; modelKind: string }; bundle: number }[]; itemModelIds: any[]; bundle: number; sales: number }[]) {
-
-
+export class ModelKind {
+  static initialize() {
+    this.create("color", "颜色")
+    this.create("shoeSize", "鞋码")
+    this.create("size", "尺寸")
+    this.create("edition", "版本")
   }
-}
 
-class TreeNode {
-  modelKind: any
-  // itemModelId
-  key: any
-  // stocks
-  stocks: any[] = []
+  // 所有的商品型号种类
+  static Kinds: string[] = []
+  static Kind: Record<string, string> = {}
 
-  constructor(key: any) {
-    this.key = key
+  // 商品型号种类的名称（给人看的）
+  static NameMapper = new Map()
+
+  static create(value: string, name: string) {
+    this.Kinds.push(value)
+    this.NameMapper.set(value, name)
+    this.Kind[value] = value
   }
 
 }
+
+ModelKind.initialize()
 
 export class SKUService {
   db = new SkuMemoryDb()
@@ -68,7 +36,6 @@ export class SKUService {
 
   constructor() {
     this.initialize()
-    this.loadSample(4)
   }
 
   public initialize() {
@@ -310,25 +277,26 @@ export class SKUService {
    *
    */
   get currentItemStocksWithItemModelAsc() {
-    const data = [
-      {sizeModelOrder: 0, colorModelOrder: 0, editionOrder: 0, bundle: 0},
-      {sizeModelOrder: 0, colorModelOrder: 0, editionOrder: 1, bundle: 1},
-      {sizeModelOrder: 0, colorModelOrder: 0, editionOrder: 2, bundle: 2},
-      {sizeModelOrder: 1, colorModelOrder: 0, editionOrder: 0, bundle: 3},
-      {sizeModelOrder: 1, colorModelOrder: 0, editionOrder: 1, bundle: 4},
-      {sizeModelOrder: 1, colorModelOrder: 0, editionOrder: 2, bundle: 5},
-      {sizeModelOrder: 0, colorModelOrder: 1, editionOrder: 3, bundle: 6},
-      {sizeModelOrder: 0, colorModelOrder: 1, editionOrder: 4, bundle: 7},
-      {sizeModelOrder: 0, colorModelOrder: 1, editionOrder: 5, bundle: 8},
-      {sizeModelOrder: 1, colorModelOrder: 1, editionOrder: 3, bundle: 9},
-      {sizeModelOrder: 1, colorModelOrder: 1, editionOrder: 4, bundle: 1},
-      {sizeModelOrder: 1, colorModelOrder: 1, editionOrder: 5, bundle: 1},
-    ]
+    // 期望结果如下，这样才能排序
+    // const data = [
+    //   {sizeModelOrder: 0, colorModelOrder: 0, editionOrder: 0, bundle: 0},
+    //   {sizeModelOrder: 0, colorModelOrder: 0, editionOrder: 1, bundle: 1},
+    //   {sizeModelOrder: 0, colorModelOrder: 0, editionOrder: 2, bundle: 2},
+    //   {sizeModelOrder: 1, colorModelOrder: 0, editionOrder: 0, bundle: 3},
+    //   {sizeModelOrder: 1, colorModelOrder: 0, editionOrder: 1, bundle: 4},
+    //   {sizeModelOrder: 1, colorModelOrder: 0, editionOrder: 2, bundle: 5},
+    //   {sizeModelOrder: 0, colorModelOrder: 1, editionOrder: 3, bundle: 6},
+    //   {sizeModelOrder: 0, colorModelOrder: 1, editionOrder: 4, bundle: 7},
+    //   {sizeModelOrder: 0, colorModelOrder: 1, editionOrder: 5, bundle: 8},
+    //   {sizeModelOrder: 1, colorModelOrder: 1, editionOrder: 3, bundle: 9},
+    //   {sizeModelOrder: 1, colorModelOrder: 1, editionOrder: 4, bundle: 1},
+    //   {sizeModelOrder: 1, colorModelOrder: 1, editionOrder: 5, bundle: 1},
+    // ]
 
     const itemModels = this.currentItemModels
-    let currentItemStocks = _.cloneDeep(this.currentItemStocks)
-    const kindUsedSortedCountAsc = this.kindUsedSortedCountAsc.map(i => i[0])
-    const itemModelOrder = kindUsedSortedCountAsc.map(modelKind => {
+    const currentItemStocks = this.currentItemStocks
+    const kindUsedSortedCountAsc = this.kindUsedSortedCountAsc
+    const itemModelOrder = this.kindUsedSortedCountAsc.map(modelKind => {
       const itemModelsWithModelKind = itemModels.filter(a => a.modelKind === modelKind)
       return {
         modelKind: modelKind,
@@ -403,14 +371,15 @@ export class SKUService {
     return cartesian(_.values(this.itemModelGroupByModelKindUsed))
   }
 
-  get kindUsedSortedCountAsc(): [ItemModelKind, SKUTypeDefinition.ItemModel[]][] {
+  get kindUsedSortedCountAsc(): string[] {
     return _.pipe(
       _.toPairs,
       _.orderBy(
         _.pipe(
           _.last,
           _.size,
-        ), 'asc')
+        ), 'asc'),
+      _.map(_.first)
     )(this.itemModelGroupByModelKindUsed) as any
   }
 
@@ -441,6 +410,75 @@ export class SKUService {
     })
 
     this.db.stocks.push(...stocks)
+  }
+
+  /**
+   * 每个按钮都有五种情况
+   * 1. 未选中任何型号，但是商品型号没有任何一个规格有库存    【不可选】
+   * 2. 选中了其他商品型号，与改商品型号生成的规格无库存，    【不可选】
+   * 3. 选中了其他商品型号，与改商品型号生成的规格有库存，    【可以】
+   * 4. 选中了当前商品型号，可以选择，相当于反选            【可选】
+   * 5. 未选中任何型号，并且该商品型号至少存在一个规格有库存  【可选】
+   *
+   * 第一种是一个特殊的情况，在这种情况下任何时候改商品型号都无法被选择
+   *
+   * 假设有如下商品型号
+   * color: ['红色', '蓝色']
+   * size: ['小', '中']
+   * edition: ['lite']
+   *
+   * 可得出笛卡尔积如下
+   * * [
+   * { color: '红色', size: '小', edition: 'lite', quantity: 1 },
+   * 注意，这一条也是一个有效的商品规格，但是它的库存是 0，所以在生成图的时候我们可以认为这条记录不计入图边的生成
+   * { color: '红色', size: '中', edition: 'lite', quantity: 0 },
+   * { color: '蓝色', size: '小', edition: 'lite', quantity: 1 },
+   * { color: '蓝色', size: '中', edition: 'lite', quantity: 1 },
+   * ]
+   *
+   * 通过笛卡尔积可以生成如下数据结构的图
+   * { vertex: "红色", adj: ["小", "lite"] }
+   * { vertex: "蓝色", adj: ["小", "中", "lite"] }
+   * { vertex: "小", adj: ["红色", "蓝色", "lite"] }
+   * { vertex: "中", adj: [蓝色", "lite"] }
+   * { vertex: "lite", adj: ["红色", "蓝色", "小", "中"] }
+   *
+   *
+   *
+   * 由图转换为相邻矩阵
+   *      红色 蓝色  小  中  Lite
+   * 红色 | 0 | 0 | 1 | 0 | 1 |
+   * 蓝色 | 0 | 0 | 1 | 1 | 1 |
+   * 小   | 1 | 1 | 0 | 0 | 1 |
+   * 中   | 0 | 1 | 0 | 0 | 1 |
+   * Lite | 1 | 1 | 1 | 1 | 0 |
+   *
+   * Aasd6^*&%&^asd&(*
+   *
+   * 通过上面矩阵使用后会发现
+   * 如果选中了红色，则无法在选择蓝色
+   * 如果选中了小，则无法在选择中
+   * 所以就意味着，我们还需要将上面的矩阵转换为下面这样（即，同种类的商品型号也要链接起来）
+   * 那么这一步应该在哪里进行呢？根据从上至下的阅读方式，现在我们已经进展到了根据图生成相邻矩阵的步骤
+   * 那么是否就应该在生成相邻矩阵的时候来处理呢？
+   * 答案当然是：No
+   * 相邻矩阵只从图中的顶点和边生成，否则整个逻辑将会非常复杂 AdjoinMatrix.of，还需要商品的 stocks(sku) 数据
+   * 读者："那你他喵的为什么不早说？"
+   * 作者："当然是为了等到问题在出现，再开始想解决方案(PS: 请已经先想到的小伙伴不要鄙视笔者hhhhh)"
+   *
+   *
+   */
+
+  get graph() {
+    return SkuGraph.of({
+      itemModels: this.currentItemModels,
+      itemStocks: this.currentItemStocks,
+      itemBundles: this.currentItemBundles,
+    })
+  }
+
+  get adjoinMatrix() {
+    return SkuAdjoinMatrix.of(this.graph)
   }
 
   updateStockByIndex(newStock: Partial<Pick<SKUTypeDefinition.ItemStock, "quantity" | "unitPrice">>, index: number) {
@@ -521,43 +559,43 @@ const samples: ((skuServce: SKUService) => void)[] = [
 
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.size,
+        modelKind: ModelKind.Kind.size,
         name: "小",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.color,
+        modelKind: ModelKind.Kind.color,
         name: "蓝色",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.edition,
+        modelKind: ModelKind.Kind.edition,
         name: "Lite",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.color,
+        modelKind: ModelKind.Kind.color,
         name: "红色",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.edition,
+        modelKind: ModelKind.Kind.edition,
         name: "Plus",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.edition,
+        modelKind: ModelKind.Kind.edition,
         name: "Max",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.edition,
+        modelKind: ModelKind.Kind.edition,
         name: "Pro X",
       }
     )
@@ -567,31 +605,31 @@ const samples: ((skuServce: SKUService) => void)[] = [
 
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.size,
+        modelKind: ModelKind.Kind.size,
         name: "小",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.size,
+        modelKind: ModelKind.Kind.size,
         name: "中",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.color,
+        modelKind: ModelKind.Kind.color,
         name: "蓝色",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.edition,
+        modelKind: ModelKind.Kind.edition,
         name: "Lite",
       }
     )
     skuService.modelUpsert({
         itemId: skuService.currentItem.itemId,
-        modelKind: ItemModelKind.color,
+        modelKind: ModelKind.Kind.color,
         name: "红色",
       }
     )
@@ -603,31 +641,31 @@ const samples: ((skuServce: SKUService) => void)[] = [
       {
         itemId: skuService.currentItem.itemId,
         modelId: 0,
-        modelKind: ItemModelKind.color,
+        modelKind: ModelKind.Kind.color,
         name: "红色"
       },
       {
         itemId: skuService.currentItem.itemId,
         modelId: 1,
-        modelKind: ItemModelKind.color,
+        modelKind: ModelKind.Kind.color,
         name: "蓝色"
       },
       {
         itemId: skuService.currentItem.itemId,
         modelId: 2,
-        modelKind: ItemModelKind.size,
+        modelKind: ModelKind.Kind.size,
         name: "小"
       },
       {
         itemId: skuService.currentItem.itemId,
         modelId: 3,
-        modelKind: ItemModelKind.size,
+        modelKind: ModelKind.Kind.size,
         name: "中"
       },
       {
         itemId: skuService.currentItem.itemId,
         modelId: 4,
-        modelKind: ItemModelKind.edition,
+        modelKind: ModelKind.Kind.edition,
         name: "Lite"
       },
     )

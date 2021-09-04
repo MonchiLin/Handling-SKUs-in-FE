@@ -25,7 +25,7 @@ import { useSKUService } from '../sku-service-vue'
 import _ from 'lodash/fp'
 import { SkuRowSpanCalc } from "@sku/core/src/sku-row-span-calc";
 import { SKUTypeDefinition } from "@sku/core/src/sku-type-definition";
-import { ItemModelKindZHMapper } from "@sku/core/src/sku-service";
+import { ModelKind } from "@sku/core/src/sku-service";
 
 export default defineComponent({
   props: {},
@@ -36,52 +36,19 @@ export default defineComponent({
       const itemStocks = skuService.currentItemStocksWithItemModelAsc
       const itemBundles = skuService.currentItemBundles
       const itemModels = skuService.currentItemModels
-      if (_.isEmpty(itemModels)) {
-        return []
-      }
-
-      // 根据 itemModeKind 分组，并且根据 itemModeKind 使用次数从大到小排序
-      const itemModelGroupByKindOrderByKindUsedCount: any = _.pipe(
-          _.toPairs,
-          _.orderBy(
-              _.pipe(
-                  _.last,
-                  _.size,
-              ), 'desc'),
-      )(skuService.itemModelGroupByModelKindUsed)
-
-      const otherModelKinds = _.map(_.last)(itemModelGroupByKindOrderByKindUsedCount.slice(1))
-
-      if (_.isEmpty(otherModelKinds)) {
-        return []
-      }
-
-      const skuRowSpanCalc = SkuRowSpanCalc.of(itemModels, skuService.kindUsedSortedCountAsc.map(i => i[0]))
+      const skuRowSpanCalc = SkuRowSpanCalc.of(itemModels)
       const skuRowSpanCalcMapper = skuRowSpanCalc.mapper
       const kindUsedSortedCountAsc = skuService.kindUsedSortedCountAsc
-
-      // console.clear()
-      // console.log("skuRowSpanCalc", skuRowSpanCalc)
-      // console.log("实际行合并结果", skuRowSpanCalcMapper)
-      // console.log("kindUsedSortedCountAsc", kindUsedSortedCountAsc)
-      // console.log("skuService.cartesianProd", _.cloneDeep(skuService.cartesianProd))
-
       const dataSource = itemStocks.flatMap((stock, rowIndex) => {
         const bundles = itemBundles.filter(bundle => bundle.bundle === stock.bundle)
-        // console.log(_.cloneDeep(bundles))
-        // console.group(stock.bundle)
         const cols = bundles.reduce((prev, bundle) => {
           const model = itemModels.find(i => i.modelId === bundle.modelId)!
-          // console.log("model.name", model.name)
           return {
             ...prev,
             [model.modelKind]: model.name,
             [`${model.modelKind}Model`]: model,
           }
         }, {})
-        // console.groupEnd()
-
-        // console.log(_.cloneDeep(cols))
 
         const record: Record<any, any> = {
           ...stock,
@@ -89,20 +56,17 @@ export default defineComponent({
           rowKey: rowIndex
         }
 
-        kindUsedSortedCountAsc.forEach(([itemKind]) => {
+        kindUsedSortedCountAsc.forEach((itemKind) => {
           const rowCount = skuRowSpanCalcMapper[itemKind]
           if (rowIndex % rowCount === 0) {
             record[`${itemKind}RowSpan`] = rowCount
-            // record[`${itemKind}RowSpan`] = 1
           } else {
             record[`${itemKind}RowSpan`] = 0
-            // record[`${itemKind}RowSpan`] = 1
           }
         })
         return record
       })
 
-      console.log(_.cloneDeep(dataSource))
       return dataSource
     })
 
@@ -110,15 +74,14 @@ export default defineComponent({
     const columns = computed(() => {
 
       return [
-        ...skuService.kindUsedSortedCountAsc.map(([kind]) => {
+        ...skuService.kindUsedSortedCountAsc.map((modelKind) => {
           return {
-            title: ItemModelKindZHMapper[kind],
-            dataIndex: kind,
+            title: ModelKind.NameMapper.get(modelKind),
+            dataIndex: modelKind,
             customRender: ({record}: any) => {
               const obj = {
-                children: record[kind],
-                props: {rowSpan: record[`${kind}RowSpan`]},
-                // props: {rowSpan: 1},
+                children: record[modelKind],
+                props: {rowSpan: record[`${modelKind}RowSpan`]},
               };
               return obj
             }
