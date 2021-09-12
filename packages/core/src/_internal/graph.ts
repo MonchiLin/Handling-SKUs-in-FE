@@ -1,10 +1,14 @@
-export interface IVertex<T = any> {
+export interface IGraphVertex<T = any> {
   value: T
 
   get key(): string
+
+  getFriendlyName(): string
+
+  compare(b: IGraphVertex<T>): boolean
 }
 
-export class Vertex<T> implements IVertex<T> {
+export class GraphVertex<T> implements IGraphVertex<T> {
   get key() {
     return this.value + ""
   }
@@ -15,49 +19,52 @@ export class Vertex<T> implements IVertex<T> {
     this.value = value
   }
 
+  getFriendlyName() {
+    return this.value + ""
+  }
+
+  compare(b: IGraphVertex<T>): boolean {
+    return this.value === b.value
+  }
 }
 
 export class Graph<T = any> {
-  protected _VertexCtor!: { new(value: T): IVertex<T> }
+  protected _VertexCtor!: { new(value: T): IGraphVertex<T> }
 
   get VertexCtor() {
     if (this._VertexCtor) {
       return this._VertexCtor
     } else {
-      return Vertex
+      return GraphVertex
     }
   }
 
-  protected compare(a: IVertex<T>, b: IVertex<T>): boolean {
-    return a === b
-  }
-
   // 顶点集
-  vertices: IVertex<T>[] = []
+  vertices: IGraphVertex<T>[] = []
   // 顶点到相邻顶点的关系列表
-  adjList = new Map<string, IVertex<T>[]>()
+  adjList = new Map<string, IGraphVertex<T>[]>()
 
-  indexOf(v: IVertex<T>) {
-    return this.vertices.findIndex(a => this.compare(a, v))
+  indexOf(v: IGraphVertex<T>) {
+    return this.vertices.findIndex(a => a.compare(v))
   }
 
-  getVertexBy(v: IVertex<T>, vertices: IVertex<T>[]) {
-    return vertices.find(a => this.compare(a, v))
+  getVertexBy(v: IGraphVertex<T>, vertices: IGraphVertex<T>[]) {
+    return vertices.find(a => a.compare(v))
   }
 
-  hasVertexBy(v: IVertex<T>, vertices: IVertex<T>[]) {
-    return vertices.some(a => this.compare(a, v))
+  hasVertexBy(v: IGraphVertex<T>, vertices: IGraphVertex<T>[]) {
+    return vertices.some(a => a.compare(v))
   }
 
-  getAdj(a: IVertex<T>) {
+  getAdj(a: IGraphVertex<T>) {
     return this.adjList.get(a.key)
   }
 
-  hasVertex(v: IVertex<T>) {
-    return this.vertices.some(a => this.compare(a, v))
+  hasVertex(v: IGraphVertex<T>) {
+    return this.vertices.some(a => a.compare(v))
   }
 
-  addVertex(vertex: IVertex<T>) {
+  addVertex(vertex: IGraphVertex<T>) {
     if (this.hasVertex(vertex)) {
       return
     }
@@ -70,7 +77,7 @@ export class Graph<T = any> {
     this.addVertex(vertex)
   }
 
-  addEdge(a: IVertex<T>, b: IVertex<T>) {
+  addEdge(a: IGraphVertex<T>, b: IGraphVertex<T>) {
     if (!this.hasVertex(a)) {
       this.addVertex(a)
     }
@@ -97,16 +104,12 @@ export class Graph<T = any> {
     )
   }
 
-  protected getFriendlyName(v: IVertex<T>) {
-    return v.key
-  }
-
   toString() {
     let s = '';
     this.vertices.forEach((v) => {
-      s += `${this.getFriendlyName(v)} -> `;
+      s += `${v.getFriendlyName()} -> `;
       this.getAdj(v)!.forEach((n) => {
-        s += `${this.getFriendlyName(n)} `;
+        s += `${n.getFriendlyName()} `;
       });
       s += '\n';
     });
@@ -118,7 +121,7 @@ export class Graph<T = any> {
    * @param vertex
    * @param target
    */
-  isConnected(vertex: IVertex<T>, target: IVertex<T>) {
+  isConnected(vertex: IGraphVertex<T>, target: IGraphVertex<T>) {
     const adj = this.getAdj(vertex)!
     return this.hasVertexBy(target, adj)
   }
