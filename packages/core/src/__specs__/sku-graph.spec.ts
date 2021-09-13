@@ -217,4 +217,30 @@ describe("SkuGraph", () => {
     });
   });
 
+  describe('传入错误的商品数据', function () {
+    const data = {
+      "items": [{"itemId": 1, "name": "Windows"}],
+      "bundles": [{"itemId": 1, "bundle": 0, "modelId": 3}, {"itemId": 1, "bundle": 0, "modelId": 6}],
+      "stocks": [{"itemId": 1, "bundle": 0, "sales": 0, "quantity": -1, "unitPrice": 0}, null as any],
+      "models": [{"itemId": 1, "modelKind": "color", "name": "红色", "modelId": 3}, {
+        "itemId": 1,
+        "modelKind": "edition",
+        "name": "Pro X",
+        "modelId": 6
+      }]
+    }
+
+    it("应该抛出错误", () => {
+      expect(
+        () => SkuGraph.of({
+          itemModels: data.models,
+          itemStocks: data.stocks,
+          itemBundles: data.bundles,
+          linkSameModelKind: false
+        })
+      ).toThrow(Error)
+    });
+
+  });
+
 });
