@@ -1,10 +1,11 @@
-import _ from "lodash/fp";
+import { isEmpty } from "lodash/fp";
 import { SKUTypeDefinition } from "./sku-type-definition";
 import { itemModelEq } from "./_fn";
 import { AdjoinMatrix, AdjoinMatrixFlag } from "./_internal/matrix";
 import { Graph } from "./_internal/graph";
 
 export class SkuAdjoinMatrix extends AdjoinMatrix<SKUTypeDefinition.ItemModel> {
+
   getFriendlyName(a: SKUTypeDefinition.ItemModel): string {
     return a.name
   }
@@ -23,7 +24,7 @@ export class SkuAdjoinMatrix extends AdjoinMatrix<SKUTypeDefinition.ItemModel> {
         if (index === rowIndex) {
           return
         }
-        if (!_.isEmpty(graph.getAdj(vertex))) {
+        if (!isEmpty(graph.getAdj(vertex))) {
           adjoinMatrix.set(rowIndex, colIndex, AdjoinMatrixFlag.Conjoint)
         }
       })
